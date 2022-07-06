@@ -1,0 +1,20 @@
+{
+  "name": "ts-sns-basic",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/dhgu-dev/ts-sns-basic.git",
+  "author": "dhgu <dhgu.dev@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "client": "yarn workspace client start",
+    "server": "yarn workspace server start"
+  },
+  "devDependencies": {
+    "typescript": "^4.7.4"
+  }
+}
