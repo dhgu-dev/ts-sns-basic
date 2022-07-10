@@ -1,7 +1,13 @@
 import React from 'react';
+import MsgList from '../components/MsgList';
 
 function Home() {
-  return <div>Home</div>;
+  return (
+    <>
+      <h1>HOME</h1>
+      <MsgList />
+    </>
+  );
 }
 
 export default Home;
