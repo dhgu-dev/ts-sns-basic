@@ -2,14 +2,16 @@ import React from 'react';
 import MsgInput from './MsgInput';
 
 type Props = {
-  id: number;
+  id: string;
   userId: string;
   timestamp: number;
   text: string;
-  onUpdate: (text: string, id?: number) => void;
+  onUpdate: (text: string, id?: string) => void;
   isEditing: boolean;
   startEdit: () => void;
   onDelete: () => void;
+  myId: string | string[];
+  nickname: string;
 };
 
 function MsgItem({
@@ -21,6 +23,8 @@ function MsgItem({
   isEditing,
   startEdit,
   onDelete,
+  myId,
+  nickname,
 }: Props) {
   const dateText = new Date(timestamp).toLocaleString('ko-KR', {
     year: 'numeric',
@@ -33,7 +37,7 @@ function MsgItem({
   return (
     <li className="messages__item">
       <h3>
-        {userId} <sub>{dateText}</sub>
+        {nickname} <sub>{dateText}</sub>
       </h3>
       {isEditing ? (
         <>
@@ -43,10 +47,12 @@ function MsgItem({
         text
       )}
 
-      <div className="messages__buttons">
-        <button onClick={startEdit}>수정</button>
-        <button onClick={onDelete}>삭제</button>
-      </div>
+      {myId === userId && (
+        <div className="messages__buttons">
+          <button onClick={startEdit}>수정</button>
+          <button onClick={onDelete}>삭제</button>
+        </div>
+      )}
     </li>
   );
 }

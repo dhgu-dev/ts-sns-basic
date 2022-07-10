@@ -1,8 +1,8 @@
 import React, { useRef } from 'react';
 
 type Props = {
-  mutate: (text: string, id?: number) => void;
-  id?: number;
+  mutate: (text: string, id?: string) => void;
+  id?: string;
   text?: string;
 };
 
