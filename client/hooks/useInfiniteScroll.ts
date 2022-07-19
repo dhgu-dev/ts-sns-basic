@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, RefObject } from 'react';
 
-const useInfiniteScroll = (targetEl: React.RefObject<HTMLElement>) => {
+const useInfiniteScroll = (targetEl: RefObject<HTMLElement>) => {
   const observerRef = useRef<IntersectionObserver>();
   const [intersecting, setIntersecting] = useState<boolean>(false);
 

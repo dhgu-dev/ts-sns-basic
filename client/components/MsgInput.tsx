@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, FormEvent } from 'react';
 
 type Props = {
   mutate: (text: string, id?: string) => void;
@@ -6,17 +6,16 @@ type Props = {
   text?: string;
 };
 
-function MsgInput({ mutate, id = undefined, text }: Props) {
+function MsgInput({ mutate, id = undefined, text = '' }: Props) {
   const textRef = useRef<HTMLTextAreaElement>(null);
 
-  const onSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
+  const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (textRef.current) {
-      const text = textRef.current.value;
-      textRef.current.value = '';
-      mutate(text, id);
-    }
+    if (!textRef.current) return;
+    const text = textRef.current.value;
+    textRef.current.value = '';
+    mutate(text, id);
   };
 
   return (

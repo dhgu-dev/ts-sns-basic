@@ -1,10 +1,11 @@
 import React from 'react';
-import MsgList, { TMsg, TUsers } from '../components/MsgList';
+import MsgList from '../components/MsgList';
 import fetcher from '../fetcher';
+import { Message, Users, METHOD } from '../types';
 
 type Props = {
-  serverMsgs: TMsg[];
-  users: TUsers;
+  serverMsgs: Message[];
+  users: Users;
 };
 
 function Home({ serverMsgs, users }: Props) {
