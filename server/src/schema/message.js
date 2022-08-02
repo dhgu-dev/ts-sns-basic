@@ -4,12 +4,13 @@ const messageSchema = gql`
   type Message {
     id: ID!
     text: String!
-    userId: User!
+    userId: ID!
+    user: User!
     timestamp: Float # 13자리 숫자
   }
 
   extend type Query {
-    messages: [Message!]! # getMessages
+    messages(cursor: ID): [Message!]! # getMessages
     message(id: ID!): Message! # getMessage
   }
 

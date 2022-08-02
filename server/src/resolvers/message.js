@@ -11,7 +11,10 @@ const messageResolver = {
   Query: {
     messages: (obj, args, context) => {
       const { models } = context;
-      return models.messages;
+      const { cursor = '' } = args;
+      const fromIndex =
+        models.messages.findIndex((msg) => String(msg.id) === cursor) + 1;
+      return models.messages?.slice(fromIndex, fromIndex + 15) || [];
     },
     message: (obj, { id = '' }, { models }) => {
       return models.messages.find((msg) => String(msg.id) === id);
@@ -19,6 +22,7 @@ const messageResolver = {
   },
   Mutation: {
     createMessage: (obj, { text, userId }, { models }) => {
+      if (!userId) throw Error('사용자가 없습니다');
       const newMsg = {
         id: v4(),
         text,
@@ -51,6 +55,9 @@ const messageResolver = {
       setMsgs(messages);
       return id;
     },
+  },
+  Message: {
+    user: (msg, args, { models }) => models.users[msg.userId],
   },
 };
 
