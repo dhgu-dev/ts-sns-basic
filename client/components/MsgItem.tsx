@@ -1,17 +1,17 @@
 import React from 'react';
 import MsgInput from './MsgInput';
-import { User } from '../types';
+import { User, Mutate } from '../types';
 
 type Props = {
   id: string;
   timestamp: number;
   text: string;
-  isEditing: boolean;
-  onUpdate: (text: string, id?: string) => void;
-  onDelete: () => void;
-  startEdit: () => void;
   myId: string;
   user: User;
+  isEditing: boolean;
+  onUpdate: Mutate;
+  onDelete: () => void;
+  startEdit: () => void;
 };
 
 function MsgItem({
@@ -38,6 +38,7 @@ function MsgItem({
       <h3>
         {user.nickname} <sub>{dateText}</sub>
       </h3>
+
       {isEditing ? (
         <>
           <MsgInput mutate={onUpdate} id={id} text={text} />

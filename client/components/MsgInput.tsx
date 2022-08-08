@@ -1,7 +1,8 @@
 import React, { useRef, FormEvent } from 'react';
+import { Mutate } from '../types';
 
 type Props = {
-  mutate: (text: string, id?: string) => void;
+  mutate: Mutate;
   id?: string;
   text?: string;
 };
@@ -15,7 +16,7 @@ function MsgInput({ mutate, id = undefined, text = '' }: Props) {
     if (!textRef.current) return;
     const text = textRef.current.value;
     textRef.current.value = '';
-    mutate(text, id);
+    mutate({ text, id });
   };
 
   return (

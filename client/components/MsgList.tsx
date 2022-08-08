@@ -2,98 +2,141 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import MsgInput from './MsgInput';
 import MsgItem from './MsgItem';
-import fetcher from '../fetcher';
+import {
+  QueryKeys,
+  fetcher,
+  findTargetMsgIndex,
+  getNewMessages,
+} from '../queryClient';
+import {
+  GET_MESSAGES,
+  CREATE_MESSAGE,
+  UPDATE_MESSAGE,
+  DELETE_MESSAGE,
+} from '../graphql/message';
 import useInfiniteScroll from '../hooks/useInfiniteScroll';
-import { METHOD, Message, Users } from '../types';
+import {
+  useQueryClient,
+  useMutation,
+  useInfiniteQuery,
+} from '@tanstack/react-query';
+import { Message, MsgQueryData } from '../types';
 
 type Props = {
   serverMsgs: Message[];
-  users: Users;
 };
 
-function MsgList({ serverMsgs, users }: Props) {
+function MsgList({ serverMsgs }: Props) {
+  const client = useQueryClient();
   const { query } = useRouter();
   const userId = (query.userId || query.userid || '') as string;
-  const [msgs, setMsgs] = useState<Message[]>(serverMsgs);
+  const [msgs, setMsgs] = useState([{ messages: serverMsgs }]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const fetchMoreEl = useRef<HTMLDivElement>(null);
   const intersecting = useInfiniteScroll(fetchMoreEl);
-  const [hasNext, setHasNext] = useState<boolean>(true);
 
-  const onCreate = async (text: string) => {
-    const newMsg: Message = await fetcher('post', '/messages', {
-      text,
-      userId,
-    });
-    if (!newMsg) throw Error('no new message');
-    setMsgs((msgs) => [newMsg, ...msgs]);
-  };
+  const { mutate: onCreate } = useMutation(
+    ({ text }: { text: string }) => fetcher(CREATE_MESSAGE, { text, userId }),
+    {
+      onSuccess: ({ createMessage }) => {
+        client.setQueryData<MsgQueryData>([QueryKeys.MESSAGES], (old) => {
+          if (!old)
+            return { pages: [{ messages: [createMessage] }], pageParams: '' };
+          return {
+            pages: [
+              { messages: [createMessage, ...old.pages[0].messages] },
+              ...old.pages.slice(1),
+            ],
+            pageParams: old.pageParams,
+          };
+        });
+      },
+    },
+  );
 
-  const onUpdate = async (text: string, id?: string) => {
-    const newMsg: Message = await fetcher('put', `/messages/${id}`, {
-      text,
-      userId,
-    });
-    if (!newMsg) throw Error('no new message');
-    setMsgs((msgs) => {
-      const targetIndex = msgs.findIndex((msg) => msg.id === id);
-      if (targetIndex < 0) return msgs;
-      const newMsgs = [...msgs];
-      newMsgs.splice(targetIndex, 1, newMsg);
-      return newMsgs;
-    });
-    doneEdit();
-  };
+  const { mutate: onUpdate } = useMutation(
+    ({ text, id }: { text: string; id?: string }) =>
+      fetcher(UPDATE_MESSAGE, { text, id, userId }),
+    {
+      onSuccess: ({ updateMessage }) => {
+        doneEdit();
+        client.setQueryData<MsgQueryData>([QueryKeys.MESSAGES], (old) => {
+          if (!old) return { pages: [{ messages: [] }], pageParams: '' };
+          const { pageIndex, msgIndex } = findTargetMsgIndex(
+            old.pages,
+            updateMessage.id,
+          );
+          if (pageIndex < 0 || msgIndex < 0) return old;
+          const newMsgs = getNewMessages(old);
+          newMsgs.pages[pageIndex].messages.splice(msgIndex, 1, updateMessage);
+          return newMsgs;
+        });
+      },
+    },
+  );
 
-  const onDelete = async (id: string) => {
-    const receivedId: string = await fetcher('delete', `/messages/${id}`, {
-      params: { userId },
-    });
-    if (!receivedId) throw Error('delete failed');
-    setMsgs((msgs) => {
-      const targetIndex = msgs.findIndex((msg) => msg.id === receivedId);
-      if (targetIndex < 0) return msgs;
-      const newMsgs = [...msgs];
-      newMsgs.splice(targetIndex, 1);
-      return newMsgs;
-    });
-  };
+  const { mutate: onDelete } = useMutation(
+    (id: string) => fetcher(DELETE_MESSAGE, { id, userId }),
+    {
+      onSuccess: ({ deleteMessage: deletedId }) => {
+        client.setQueryData<MsgQueryData>([QueryKeys.MESSAGES], (old) => {
+          if (!old) return { pages: [{ messages: [] }], pageParams: '' };
+          const { pageIndex, msgIndex } = findTargetMsgIndex(
+            old.pages,
+            deletedId,
+          );
+          if (pageIndex < 0 || msgIndex < 0) return old;
+          const newMsgs = getNewMessages(old);
+          newMsgs.pages[pageIndex].messages.splice(msgIndex, 1);
+          return newMsgs;
+        });
+      },
+    },
+  );
 
   const doneEdit = () => setEditingId(null);
 
-  const getMessages = async () => {
-    const newMsgs: Message[] = await fetcher('get', '/messages', {
-      params: { cursor: msgs[msgs.length - 1]?.id || '' },
-    });
-    if (newMsgs.length === 0) {
-      setHasNext(false);
-      return;
-    }
-    setMsgs((msgs) => [...msgs, ...newMsgs]);
-  };
+  const { data, error, isError, fetchNextPage, hasNextPage } = useInfiniteQuery(
+    [QueryKeys.MESSAGES],
+    ({ pageParam = '' }) => fetcher(GET_MESSAGES, { cursor: pageParam }),
+    {
+      getNextPageParam: ({ messages }) => messages?.[messages.length - 1]?.id,
+    },
+  );
 
   useEffect(() => {
-    if (intersecting && hasNext) getMessages();
-  }, [intersecting]);
+    if (!data?.pages) return;
+    setMsgs(data.pages);
+  }, [data?.pages]);
+
+  if (isError) {
+    console.error(error);
+    return null;
+  }
+
+  useEffect(() => {
+    if (intersecting && hasNextPage) fetchNextPage();
+  }, [intersecting, hasNextPage]);
 
   return (
     <>
-      {userId && <MsgInput mutate={onCreate}></MsgInput>}
+      {userId && <MsgInput mutate={onCreate} />}
       <ul className="messages">
-        {msgs.map((x) => (
-          <MsgItem
-            key={x.id}
-            {...x}
-            onUpdate={onUpdate}
-            isEditing={editingId === x.id}
-            startEdit={() =>
-              setEditingId((prevId) => (prevId === x.id ? null : x.id))
-            }
-            onDelete={() => onDelete(x.id)}
-            myId={userId}
-            user={users[x.userId]}
-          ></MsgItem>
-        ))}
+        {msgs.map(({ messages }, pageIndex) =>
+          messages.map((x) => (
+            <MsgItem
+              key={pageIndex + x.id}
+              {...x}
+              onUpdate={onUpdate}
+              isEditing={editingId === x.id}
+              startEdit={() =>
+                setEditingId((prevId) => (prevId === x.id ? null : x.id))
+              }
+              onDelete={() => onDelete(x.id)}
+              myId={userId}
+            />
+          )),
+        )}
       </ul>
       <div ref={fetchMoreEl}></div>
     </>
